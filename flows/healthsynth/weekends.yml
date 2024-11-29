@@ -1,0 +1,19 @@
+id: weekend
+namespace: healthsynth.weekend
+description: |
+  Weekend notification for the users
+
+labels:
+  tag: weekend
+
+tasks:
+  - id: telegram_notification
+    type: io.kestra.plugin.notifications.telegram.TelegramSend
+    channel: "@healthsynth"
+    token: "{{ secret('TELEGRAM_TOKEN') }}"
+    payload: No doctor available today, for emergency call on this number xxxxx-112344
+
+triggers:
+  - id: schedule_data_gen
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "05 10 * * 6-7" # only on weekends
