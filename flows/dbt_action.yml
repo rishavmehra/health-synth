@@ -1,0 +1,72 @@
+id: dbt_action
+namespace: healthsynth.hospital
+description: |
+  Redshift build the data
+
+labels:
+  tag: databuild
+
+tasks:
+  - id: workingdir
+    type: io.kestra.plugin.core.flow.WorkingDirectory
+    tasks:
+      - id: cloneRepository
+        type: io.kestra.plugin.git.Clone
+        url: https://github.com/rishavmehra/health-synth.git
+        branch: master
+        username: rishavmehra
+        password: "{{ secret('GITHUB_TOKEN') }}"
+
+      - id: dbt
+        type: io.kestra.plugin.dbt.cli.DbtCLI
+        parseRunResults: true
+        containerImage: ghcr.io/kestra-io/dbt-redshift:latest
+        inputFiles:
+          profiles.yml: |
+            healthdbt:
+              target: dev
+              outputs:
+                dev:
+                  type: redshift
+                  host: "{{ secret('REDSHIFT_HOST') }}.amazonaws.com"
+                  user: "{{ secret('REDSHIFT_USER') }}"
+                  password: "{{ secret('REDSHIFT_PASSWORD') }}"
+                  dbname: "dev"     
+                  schema: "public" 
+                  threads: 4
+                  port: 5439  # Default Redshift port
+        commands:
+          - dbt run --profiles-dir=. --project-dir=healthdbt
+
+triggers:
+  - id: multiple-listen-flow
+    type: io.kestra.plugin.core.trigger.Flow
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS
+      - id: multiple
+        type: io.kestra.plugin.core.condition.MultipleCondition
+        window: P1D
+        windowAdvance: P0D
+        conditions:
+          appointments:
+            type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+            namespace: healthsynth.hospital
+            flowId: dump_appointments_redshift
+          clinics:
+            type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+            namespace: healthsynth.hospital
+            flowId: dump_clinics_redshift
+          doctors:
+            type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+            namespace: healthsynth.hospital
+            flowId: dump_doctors_redshift
+          patients:
+            type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+            namespace: healthsynth.hospital
+            flowId: dump_patients_redshift
+          records:
+            type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+            namespace: healthsynth.records
+            flowId: dump_records_redshift

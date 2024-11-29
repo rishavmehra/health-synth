@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: health_log
+    database: dev  # Replace with your actual database name
+    schema: public  # Replace with your actual schema name
+    tables:
+      - name: patients
+      - name: appointments
+      - name: doctors
+      - name: records  # Add records table here as part of health_log
