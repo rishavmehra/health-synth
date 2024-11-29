@@ -1,0 +1,65 @@
+id: dump_doctors_redshift
+namespace: healthsynth.hospital
+description: |
+  Upload doctors data to AWS S3 and then load it into Redshift
+
+labels:
+  tag: doctors_dump
+
+inputs:
+  - id: doctors_data
+    type: URI
+
+  - id: current_date
+    type: DATE
+
+tasks:
+  - id: upload_to_s3
+    type: io.kestra.plugin.aws.s3.Upload
+    accessKeyId: "{{ secret('AWS_ACCESS_KEY_ID') }}"
+    secretKeyId: "{{ secret('AWS_SECRET_ACCESS_KEY') }}"
+    region: "ap-south-1"
+    from: "{{ inputs.doctors_data }}"
+    bucket: "kestra-bucketv1"
+    key: "doctors/{{ inputs.current_date }}/doctors.csv"
+
+  - id: create_table_in_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      CREATE TABLE IF NOT EXISTS doctors (
+        DoctorID VARCHAR(10) PRIMARY KEY,
+        DoctorName VARCHAR(255),
+        Specialty VARCHAR(100),
+        ClinicID VARCHAR(10),
+        Availability VARCHAR(255)
+      );
+
+  - id: import_to_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      COPY doctors
+      FROM 's3://kestra-bucketv1/doctors/{{ inputs.current_date }}/doctors.csv'
+      IAM_ROLE 'arn:aws:iam::774305599848:role/redshift-kestra'
+      CSV
+      DELIMITER ','
+      IGNOREHEADER 1;
+
+triggers:
+  - id: dump_doctors_trigger
+    type: io.kestra.plugin.core.trigger.Flow
+    inputs:
+      doctors_data: "{{ outputs.go_script.outputFiles['doctors.csv'] }}"
+      current_date: "{{ outputs.run_date.value }}"
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+        namespace: healthsynth.hospital
+        flowId: data_gen
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS

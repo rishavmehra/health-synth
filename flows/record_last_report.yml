@@ -1,0 +1,33 @@
+id: record_last_report
+namespace: healthsynth.records
+description: |
+  this script generate last reports data
+
+labels:
+  tag: records_gen
+
+tasks:
+  - id: go_script
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    containerImage: golang:latest
+    namespaceFiles:
+      enabled: true
+    warningOnStdErr: false
+    beforeCommands:
+      - go mod init data_gen_code || true
+    commands:
+      - go run ./code/data_gen_code.go -generate-last-reports
+    outputFiles:
+      - '*.csv'
+
+  - id: run_date
+    type: io.kestra.plugin.core.debug.Return
+    format: '{{ schedule.date ?? now() | date("yyyy-MM-dd")}}'
+
+
+triggers:
+  - id: schedule_data_gen
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "05 10 * * 1-5" 

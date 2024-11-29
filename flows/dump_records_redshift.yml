@@ -1,0 +1,64 @@
+id: dump_records_redshift
+namespace: healthsynth.records
+description: |
+  Upload last report data to AWS S3 and then load it into Redshift
+
+labels:
+  tag: patient_dump
+
+inputs:
+  - id: records_data
+    type: URI
+  - id: current_date
+    type: DATE
+
+tasks:
+  - id: upload_to_s3
+    type: io.kestra.plugin.aws.s3.Upload
+    accessKeyId: "{{ secret('AWS_ACCESS_KEY_ID') }}"
+    secretKeyId: "{{ secret('AWS_SECRET_ACCESS_KEY') }}"
+    region: "ap-south-1"
+    from: "{{ inputs.records_data }}"
+    bucket: "kestra-bucketv1"
+    key: "records/{{ inputs.current_date }}/last_reports.csv"
+
+  - id: create_table_in_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      CREATE TABLE IF NOT EXISTS records (
+        PatientID VARCHAR(10),
+        DoctorID VARCHAR(10),
+        LastReportDate DATE,
+        HealthDisease VARCHAR(255),
+        LastBilling DECIMAL(10, 2)
+      );
+
+  - id: import_to_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      COPY records
+      FROM 's3://kestra-bucketv1/records/{{ inputs.current_date }}/last_reports.csv'
+      IAM_ROLE 'arn:aws:iam::774305599848:role/redshift-kestra'
+      CSV
+      DELIMITER ','
+      IGNOREHEADER 1;
+
+triggers:
+  - id: dump_records_trigger
+    type: io.kestra.plugin.core.trigger.Flow
+    inputs:
+      records_data: "{{ outputs.go_script.outputFiles['last_reports.csv'] }}"
+      current_date: "{{ outputs.run_date.value }}"
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+        namespace: healthsynth.records
+        flowId: record_last_report
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS

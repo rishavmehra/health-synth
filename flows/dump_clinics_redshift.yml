@@ -1,0 +1,67 @@
+id: dump_clinics_redshift
+namespace: healthsynth.hospital
+description: |
+  Upload clinics data to AWS S3 and then load it into Redshift
+
+labels:
+  tag: clinics_dump
+
+inputs:
+  - id: clinics_data
+    type: URI
+
+  - id: current_date
+    type: DATE
+
+tasks:
+  - id: upload_to_s3
+    type: io.kestra.plugin.aws.s3.Upload
+    accessKeyId: "{{ secret('AWS_ACCESS_KEY_ID') }}"
+    secretKeyId: "{{ secret('AWS_SECRET_ACCESS_KEY') }}"
+    region: "ap-south-1"
+    from: "{{ inputs.clinics_data }}"
+    bucket: "kestra-bucketv1"
+    key: "clinics/{{ inputs.current_date }}/clinics.csv"
+
+  - id: create_table_in_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      CREATE TABLE IF NOT EXISTS clinics (
+        ClinicID VARCHAR(10) PRIMARY KEY,
+        ClinicName VARCHAR(255),
+        ClinicLocation VARCHAR(255)
+      );
+
+  - id: import_to_redshift
+    type: io.kestra.plugin.jdbc.redshift.Query
+    url: "jdbc:redshift://{{ secret('REDSHIFT_HOST') }}.amazonaws.com:5439/dev"
+    username: "{{ secret('REDSHIFT_USER') }}"
+    password: "{{ secret('REDSHIFT_PASSWORD') }}"
+    sql: |
+      COPY clinics
+      FROM 's3://kestra-bucketv1/clinics/{{ inputs.current_date }}/clinics.csv'
+      IAM_ROLE 'arn:aws:iam::774305599848:role/redshift-kestra'
+      CSV
+      DELIMITER ','
+      IGNOREHEADER 1;
+
+triggers:
+  - id: dump_clinics_trigger
+    type: io.kestra.plugin.core.trigger.Flow
+    inputs:
+      clinics_data: "{{ outputs.go_script.outputFiles['clinics.csv'] }}"
+      current_date: "{{ outputs.run_date.value }}"
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+        namespace: healthsynth.hospital
+        flowId: data_gen
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS
+
+
+
+
