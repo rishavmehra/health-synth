@@ -13,7 +13,7 @@ tasks:
       - id: cloneRepository
         type: io.kestra.plugin.git.Clone
         url: https://github.com/rishavmehra/health-synth.git
-        branch: master
+        branch: main
         username: rishavmehra
         password: "{{ secret('GITHUB_TOKEN') }}"
 
