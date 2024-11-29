@@ -1,0 +1,120 @@
+id: doctor_rating
+namespace: healthsynth.rating
+description: |
+  doctor rating is the average billing per patient
+
+labels:
+  tag: rating
+
+tasks:
+  - id: get_data
+    type: io.kestra.plugin.scripts.python.Script
+    beforeCommands:
+      - pip install pandas
+      - pip install psycopg2-binary
+      - python -m pip install -U matplotlib
+      - pip install seaborn
+    outputFiles:
+      - plot.png
+    script: |
+      import pandas as pd
+      import psycopg2
+      import matplotlib.pyplot as plt
+      import seaborn as sns
+
+      # Redshift connection details (replace with your credentials)
+      host = "{{ secret('REDSHIFT_HOST') }}.amazonaws.com"
+      port = 5439
+      dbname = "dev"
+      user = "{{ secret('REDSHIFT_USER') }}"
+      password = "{{ secret('REDSHIFT_PASSWORD') }}"
+
+      # Query to calculate average billing per patient
+      query = """
+      SELECT 
+          doctorid,
+          doctorname,
+          specialty,
+          SUM(total_billing) AS total_billing,
+          SUM(total_patients) AS total_patients,
+          CASE 
+              WHEN SUM(total_patients) > 0 THEN SUM(total_billing) / SUM(total_patients)
+              ELSE 0 
+          END AS avg_billing_per_patient
+      FROM 
+          record_doctor_performance
+      GROUP BY 
+          doctorid, doctorname, specialty
+      ORDER BY 
+          avg_billing_per_patient DESC;
+      """
+
+      # Connect to Redshift and fetch the data
+      try:
+          conn = psycopg2.connect(
+              host=host,
+              port=port,
+              dbname=dbname,
+              user=user,
+              password=password
+          )
+          print("Connected to Redshift successfully.")
+
+          # Execute the query and load the result into a DataFrame
+          df = pd.read_sql_query(query, conn)
+
+          # Close the connection
+          conn.close()
+
+          # Generate the bar plot for Average Billing per Patient
+          plt.figure(figsize=(12, 8))
+          sns.barplot(
+              data=df,
+              x="doctorname",
+              y="avg_billing_per_patient",
+              hue="specialty",
+              palette="Set2"
+          )
+
+          # Add title and labels
+          plt.title("Average Billing per Patient by Doctor", fontsize=16)
+          plt.xlabel("Doctor Name", fontsize=12)
+          plt.ylabel("Average Billing per Patient", fontsize=12)
+          plt.xticks(rotation=45, ha="right")
+          plt.legend(title="Specialty", fontsize=10, title_fontsize=12)
+
+          # Save the chart as plot.png
+          plt.tight_layout()
+          plt.savefig("plot.png", dpi=300)
+
+          print("Plot saved as plot.png")
+
+      except Exception as e:
+          print("Error:", e)
+          
+  - id: slack_notification
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "https://hooks.slack.com/services/T083PJGG3EC/B0830TD9ZDG/{{ secret('SLACK_WEBHOOK') }}"
+    payload: |
+      {
+        "channel": "#alerts",
+        "text": "{{ outputs.get_data.outputFiles["plot.png"] }}'"
+      }
+
+triggers:
+  - id: doctor_rating_trigger
+    type: io.kestra.plugin.core.trigger.Flow
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+        namespace: healthsynth.hospital
+        flowId: dbt_action
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS
+
+
+
+
+
+          
+         
