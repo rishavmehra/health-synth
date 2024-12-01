@@ -9,7 +9,7 @@ Health Synth is a platform designed to address key challenges in healthcare, suc
 **Live links:** <br/> 
 - Kestra Dashboard ->            <u> [Live Kestra](http://65.0.134.199:8080/)</u>
 - Grafana Dashboard for Kestra -> <u>[Grafana](http://65.0.134.199:3000/)</u>
-- Demo video: 
+- Demo video: <u>[Video](https://drive.google.com/file/d/1lr-uIwgdIajwvttATDzLI6NBCpFFPujQ/view?usp=drive_link)</u>
 - Notion Docs: [Notion](https://rishavmehra.notion.site/Health-Synth-143da50ecaba80f4a99ee13b8d05f9d1?pvs=4)
 
 ---
