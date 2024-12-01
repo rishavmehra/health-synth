@@ -1,0 +1,42 @@
+id: remove_old_records
+namespace: healthsynth.remove
+description: |
+  remove old records
+
+labels:
+  tag: remove
+
+tasks:
+  - id: remove_data
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - sleep 5
+
+  - id: slack_remove_notification
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "https://hooks.slack.com/services/T083PJGG3EC/B083TB07CRW/{{ secret('DEV_SLACK_WEBHOOK') }}"
+    payload: |
+      {
+        "channel": "#developer-notifications",
+        "text": "Patients have completed their treatment has removed now, and the backup has also been done.",
+      }
+
+triggers:
+  - id: doctor_rating_trigger
+    type: io.kestra.plugin.core.trigger.Flow
+    conditions:
+      - type: io.kestra.plugin.core.condition.ExecutionFlowCondition
+        namespace: healthsynth.hospital
+        flowId: dbt_action
+      - type: io.kestra.plugin.core.condition.ExecutionStatusCondition
+        in:
+          - SUCCESS
+
+
+
+
+
+          
+         

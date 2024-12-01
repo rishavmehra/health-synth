@@ -91,14 +91,30 @@ tasks:
 
       except Exception as e:
           print("Error:", e)
-          
+
+  - id: upload_image_to_s3
+    type: io.kestra.plugin.aws.s3.Upload
+    accessKeyId: "{{ secret('AWS_ACCESS_KEY_ID') }}"
+    secretKeyId: "{{ secret('AWS_SECRET_ACCESS_KEY') }}"
+    region: "ap-south-1"
+    from: "{{ outputs.get_data.outputFiles['plot.png'] }}"
+    bucket: "kestra-bucketv1"
+    key: "images/plot.png"
+
+  - id: telegram_rating_notification
+    type: io.kestra.plugin.notifications.telegram.TelegramSend
+    channel: "@healthsynth"
+    token: "{{ secret('TELEGRAM_TOKEN') }}"
+    payload: Rating Has upload on the application you can check now
+
+  
   - id: slack_notification
     type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
     url: "https://hooks.slack.com/services/T083PJGG3EC/B0830TD9ZDG/{{ secret('SLACK_WEBHOOK') }}"
     payload: |
       {
         "channel": "#alerts",
-        "text": "{{ outputs.get_data.outputFiles["plot.png"] }}'"
+        "text": "Check today rating here -> <https://kestra-bucketv1.s3.ap-south-1.amazonaws.com/images/plot.png|Rating>",
       }
 
 triggers:
