@@ -29,6 +29,11 @@ Health Synth is a platform designed to address key challenges in healthcare, suc
 - **Grafana:** Visualizes the metrics collected by Prometheus for monitoring and analysis.
 
 ---
+**KESTRA FLOW DESIGN:**
+
+![gen_data](./images/image_design.png)
+
+---
 **Kestra Plugins used in this project:**
  - [io.kestra.plugin.core.condition.ExecutionStatusCondition](https://kestra.io/plugins/core/conditions/io.kestra.plugin.core.condition.executionstatuscondition)
  - [io.kestra.plugin.notifications.slack.SlackIncomingWebhook](https://kestra.io/plugins/plugin-notifications/tasks/slack/io.kestra.plugin.notifications.slack.slackincomingwebhook)
