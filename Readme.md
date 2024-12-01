@@ -15,18 +15,18 @@ Health Synth is a platform designed to address key challenges in healthcare, suc
 ---
 
 **Technology Stack:**
-- kestra: Workflow Automation Platform for orchestrating workflows.
-- AWS:
-    - S3: Used for storing objects and files.
-    - Redshift: Data warehousing solution for analytics and querying.
-    - EC2: Hosts the project
-- Golang: Used for the application development.
-- Python: Utilized for data processing with `pandas` and generating plots with `matplotlib`.
-- DBT: Used for transforming data in the data warehouse and managing data models.
-- Slack webhooks: Used for sending notifications to Slack channels.
-- Telegram api: Sends notifications to end users via Telegram.
-- Promotheus: Used for monitoring Kestra flows and collecting metrics.
-- Grafana: Visualizes the metrics collected by Prometheus for monitoring and analysis.
+- **kestra:** Workflow Automation Platform for orchestrating workflows.
+- **AWS:**
+    - **S3:** Used for storing objects and files.
+    - **Redshift:** Data warehousing solution for analytics and querying.
+    - **EC2:** Hosts the project
+- **Golang:** Used for the application development.
+- **Python:** Utilized for data processing with `pandas` and generating plots with `matplotlib`.
+- **DBT:** Used for transforming data in the data warehouse and managing data models.
+- **Slack webhooks:** Used for sending notifications to Slack channels.
+- **Telegram api:** Sends notifications to end users via Telegram.
+- **Promotheus:** Used for monitoring Kestra flows and collecting metrics.
+- **Grafana:** Visualizes the metrics collected by Prometheus for monitoring and analysis.
 
 ---
 **Kestra Plugins used in this project:**
